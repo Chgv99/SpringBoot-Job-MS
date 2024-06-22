@@ -8,6 +8,7 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class AppConfig {
 
+    // this bean can be removed if the entire project uses feign
     @Bean
     @LoadBalanced
     public RestTemplate restTemplate(){

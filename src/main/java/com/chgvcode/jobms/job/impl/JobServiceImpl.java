@@ -3,6 +3,8 @@ package com.chgvcode.jobms.job.impl;
 import com.chgvcode.jobms.job.Job;
 import com.chgvcode.jobms.job.JobRepository;
 import com.chgvcode.jobms.job.JobService;
+import com.chgvcode.jobms.job.clients.CompanyClient;
+import com.chgvcode.jobms.job.clients.ReviewClient;
 import com.chgvcode.jobms.job.dto.JobDTO;
 import com.chgvcode.jobms.job.external.Company;
 import com.chgvcode.jobms.job.external.Review;
@@ -28,8 +30,13 @@ public class JobServiceImpl implements JobService {
     @Autowired
     RestTemplate restTemplate;
 
-    public JobServiceImpl(JobRepository jobRepository) {
+    private CompanyClient companyClient;
+    private ReviewClient reviewClient;
+
+    public JobServiceImpl(JobRepository jobRepository, CompanyClient companyClient, ReviewClient reviewClient) {
         this.jobRepository = jobRepository;
+        this.companyClient = companyClient;
+        this.reviewClient = reviewClient;
     }
 
     @Override
@@ -42,30 +49,15 @@ public class JobServiceImpl implements JobService {
 
     private JobDTO convertToDTO(Job job){
 
-        // getForObject is useful when we know the response will be a single object
-        Company company = restTemplate.getForObject(
-                "http://companyms:8081/companies/" + job.getCompanyId(),
-                Company.class
-        );
+        // using feign clients
+        Company company = companyClient.getCompany(job.getCompanyId());
+        List<Review> reviews = reviewClient.getReviews(job.getCompanyId());
 
-        // exchange is more versatile than getForObject. I.E. it allows us to fetch a collection
-        ResponseEntity<List<Review>> reviewResponse = restTemplate.exchange(
-                "http://reviewms:8083/reviews?companyId=" + job.getCompanyId(),
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<List<Review>>() {
-                }
-        );
-        List<Review> reviews = reviewResponse.getBody();
-
-        JobDTO jobDTO = JobMapper.mapToJobWithCompanyDto(
+        return JobMapper.mapToJobWithCompanyDto(
                 job,
                 company,
                 reviews
         );
-        //jobDTO.setCompany(company);
-
-        return jobDTO;
     }
 
     public JobDTO getJobById(Long id){
